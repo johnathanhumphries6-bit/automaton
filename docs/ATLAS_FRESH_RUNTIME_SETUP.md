@@ -35,3 +35,14 @@ This runbook prepares a fresh Automaton runtime without starting autonomous acti
 ## Rollback
 
 If the worker crashes or configuration is uncertain, stop the worker service and preserve the volume. Do not delete or recreate the volume or wallet to troubleshoot. Inspect logs with secrets redacted.
+
+## Gemini inference (free-tier eligible, subject to Google limits)
+
+The runtime can use Gemini through Google's OpenAI-compatible endpoint. Set these in the worker service's protected environment variables; do not commit secrets or paste them into chat:
+
+- `GEMINI_API_KEY`: API key from Google AI Studio.
+- `ATLAS_INFERENCE_MODEL`: a Gemini model ID supported by your Google AI Studio account, for example `gemini-2.5-flash`.
+
+The model override applies at startup and does not rewrite `automaton.json`. Gemini inference support does **not** replace Conway authentication: the current runtime still requires a Conway API key for identity, client setup, and other runtime operations. Without that key, this worker cannot run the complete Automaton agent loop yet. Gemini free-tier limits and model availability depend on Google's current terms and region.
+
+For a fresh worker, build the root runtime with `pnpm install --frozen-lockfile && pnpm build` and start it with `node dist/index.js --run` only after a valid `~/.automaton` configuration and wallet are available. Persist the full `~/.automaton` directory if you attach durable storage. Do not enable `ATLAS_ALLOW_BOOTSTRAP_TOPUP` unless you explicitly intend to authorize a real payment.
