@@ -127,8 +127,16 @@ export function startDashboardServer(): void {
 
       if (req.method === "POST" && path === "/login") {
         const origin = req.headers.origin;
+        const referer = req.headers.referer;
         const host = req.headers.host;
-        if (!origin || !host || new URL(origin).host !== host) {
+        let requestHost = "";
+        try {
+          if (origin && origin !== "null") requestHost = new URL(origin).host;
+          else if (referer) requestHost = new URL(referer).host;
+        } catch {
+          requestHost = "";
+        }
+        if (!requestHost || !host || requestHost.toLowerCase() !== host.toLowerCase()) {
           send(res, 403, page("Forbidden", "<h1>Request blocked</h1><p>Refresh the login page and try again.</p>"));
           return;
         }
