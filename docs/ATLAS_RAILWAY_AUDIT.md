@@ -76,3 +76,12 @@ These edits are on `atlas/railway-audit-and-safety`, not `main`. They have **not
 ## Initial business research recommendation
 
 Start with a small developer utility or fixed-scope automation tool. First compare at least three narrow problems using public evidence, buyer access, build time, competition, costs, and risks. Do not spend on ads, publish a product, or contact prospective customers without owner approval. No demand, revenue, or profitability has been established yet.
+
+
+## Follow-up: zero-capital revenue mission (2026-10-16)
+
+Added `docs/ATLAS_ZERO_CAPITAL_REVENUE_MISSION.md` and a default `zero-capital-opportunity-research` skill for newly initialized installations. Updated the default payment and survival skill text to emphasize zero spending authority, free resources, truthful reporting, and owner approval for spending, publishing, outreach, account creation, and child agents.
+
+**Important rollout limitation:** the new default skill is written by the setup wizard's `installDefaultSkills` function. Existing installations will not automatically receive updated skill files just because code is deployed. Do not rerun first-run setup over existing state. Install/review the new skill deliberately on the existing persistent volume, or add a separate safe migration mechanism after verifying it cannot overwrite user-created skills.
+
+This mission supports autonomous research and private prototyping; it does not grant authority to spend, publish, contact customers, create accounts, accept contracts, or spawn agents. "Every single opportunity" cannot be guaranteed; the workflow ranks a broad set of opportunities by evidence and tests them systematically. Revenue is not guaranteed.
