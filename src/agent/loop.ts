@@ -109,9 +109,15 @@ export async function runAgentLoop(
   };
 
   // Initialize inference router (Phase 2.3)
+  const standaloneModel = process.env.ATLAS_STANDALONE_MODE === "true"
+    ? (process.env.ATLAS_INFERENCE_MODEL || "gemini-2.5-flash")
+    : undefined;
   const modelStrategyConfig: ModelStrategyConfig = {
     ...DEFAULT_MODEL_STRATEGY_CONFIG,
     ...(config.modelStrategy ?? {}),
+    inferenceModel: standaloneModel || process.env.ATLAS_INFERENCE_MODEL || config.modelStrategy?.inferenceModel || config.inferenceModel,
+    lowComputeModel: standaloneModel || config.modelStrategy?.lowComputeModel || DEFAULT_MODEL_STRATEGY_CONFIG.lowComputeModel,
+    criticalModel: standaloneModel || config.modelStrategy?.criticalModel || DEFAULT_MODEL_STRATEGY_CONFIG.criticalModel,
   };
   const modelRegistry = new ModelRegistry(db.raw);
   modelRegistry.initialize();
