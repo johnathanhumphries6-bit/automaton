@@ -17,7 +17,7 @@ openssl rand -base64 36
 ```
 Generate one value for the session secret. Set the password separately; do not reuse your GitHub, email, or hosting password. Never paste either secret into a chat or commit it to the repository.
 
-Start with `node dist/index.js --dashboard`. Visit `/login` over HTTPS in production. The `/healthz` endpoint intentionally exposes only a basic liveness response.
+Start with `pnpm dashboard` after building. This script runs the root runtime entry point (`dist/index.js`) in dashboard-only mode; it does not start the agent worker. Visit `/login` over HTTPS in production. The `/healthz` endpoint intentionally exposes only a basic liveness response.
 
 ## Security behavior
 
@@ -33,11 +33,11 @@ Start with `node dist/index.js --dashboard`. Visit `/login` over HTTPS in produc
 
 1. Configure the two secrets in the hosting provider's private environment-variable settings, never in source code or committed config.
 2. Set `NODE_ENV=production` and ensure the public route is served only over HTTPS.
-3. Deploy `node dist/index.js --dashboard` as a web service with its assigned `PORT`.
+3. Create a **separate Railway service from this repository** for the dashboard, with the repository root as its root directory. Use build command `pnpm install --frozen-lockfile && pnpm build` and start command `pnpm dashboard`; provide the hosting-assigned `PORT`. Do not use the existing CLI service command `pnpm --filter @conway/automaton-cli dev` for this dashboard: that starts the separate CLI package, not the root dashboard entry point. Keep the worker stopped until build and runtime checks pass.
 4. Test wrong-password rejection, rate limiting, logout, session expiry, HTTPS cookie behavior, and restart invalidation.
 5. Keep the agent worker and dashboard as separate services unless the runtime architecture is deliberately changed.
 6. Do not expose wallet controls, raw logs, secrets, payment actions, or other powerful tools through the dashboard without separate authorization checks and security review.
 
 ## Current limitation
 
-The authenticated home page is a dashboard shell. It does not yet read live Atlas runtime status, display experiment logs, or expose control actions. Do not describe those capabilities as available until implemented and tested.
+The authenticated home page is a dashboard shell. It does not yet read live Atlas runtime status, display experiment logs, or expose control actions. Do not describe those capabilities as available until implemented and tested. A successful dashboard deployment only proves the login shell is reachable; it does not prove that the Atlas worker is running or earning revenue.
