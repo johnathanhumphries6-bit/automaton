@@ -74,7 +74,7 @@ Environment:
     process.exit(0);
   }
 
-  if (args.includes("--init")) {
+  if (args.includes("--dashboard")) {\n    const { startDashboardServer } = await import("./dashboard/server.js");\n    startDashboardServer();\n    return;\n  }\n\n  if (args.includes("--init")) {
     // Read chain type from genesis.json if written by parent during spawn
     let initChainType: import("./identity/chain.js").ChainType | undefined;
     try {
