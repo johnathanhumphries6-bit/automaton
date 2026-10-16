@@ -307,6 +307,7 @@ async function run(): Promise<void> {
     lowComputeModel: config.modelStrategy?.lowComputeModel || "gpt-5-mini",
     openaiApiKey: config.openaiApiKey,
     anthropicApiKey: config.anthropicApiKey,
+    geminiApiKey: process.env.GEMINI_API_KEY,
     ollamaBaseUrl,
     getModelProvider: (modelId) => modelRegistry.get(modelId)?.provider,
   });
