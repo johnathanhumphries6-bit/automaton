@@ -65,7 +65,7 @@ export function renderDashboardOverview(): string {
   const name = typeof config?.name === "string" ? config.name : "Atlas";
   const model = typeof config?.inferenceModel === "string" ? config.inferenceModel : "Not configured";
   const cards: string[] = [
-    card("Runtime", configured && databasePresent ? "Connected" : "Not connected", state),
+    card("Runtime state", configured && databasePresent ? "Available" : "Not connected", state),
     card("Agent turns", "—", "No readable runtime database"),
     card("Recorded inference cost", "—", "Unavailable until runtime state is connected"),
     card("Verified revenue", "$0.00", "No verified sales ledger is connected"),
@@ -98,7 +98,7 @@ export function renderDashboardOverview(): string {
     const cost = hasTable("turns") ? Number((db.prepare("SELECT COALESCE(SUM(cost_cents),0) AS n FROM turns").get() as Row).n || 0) : 0;
     const lastState = latestTurn?.state ? String(latestTurn.state) : "No turns yet";
     const lastActivity = latestTurn?.timestamp ? fmtDate(latestTurn.timestamp) : "No activity recorded";
-    cards[0] = card("Runtime", "Connected", "Read-only SQLite connection");
+    cards[0] = card("Runtime state", "Available", "Read-only SQLite connection; agent process status not verified");
     cards[1] = card("Agent turns", String(turnCount), "Latest state: " + lastState);
     cards[2] = card("Recorded inference cost", money(cost), "Recorded in turns table; not necessarily all operating costs");
     cards[3] = card("Verified revenue", "$0.00", "No verified sales ledger is connected");
@@ -130,7 +130,7 @@ export function renderDashboardOverview(): string {
       ? (db.prepare("SELECT created_at,name,duration_ms,error FROM tool_calls ORDER BY created_at DESC LIMIT 10").all() as Row[]).map((r) => [fmtDate(r.created_at), String(r.name), String(r.duration_ms || 0) + " ms", r.error ? String(r.error).slice(0, 120) : "OK"])
       : [];
 
-    return '<div class="overview-head"><div><p class="eyebrow">PRIVATE CONTROL PLANE</p><h1>' + esc(name) + '</h1><p class="subhead">Live operational overview · refresh this page for latest data</p></div><span class="pill good">State connected</span></div>' +
+    return '<div class="overview-head"><div><p class="eyebrow">PRIVATE CONTROL PLANE</p><h1>' + esc(name) + '</h1><p class="subhead">Live operational overview · refresh this page for latest data</p></div><span class="pill good">State database available</span></div>' +
       '<div class="metrics">' + cards.join("") + '</div>' +
       panel("Runtime identity", table(["Field", "Value"], identityRows)) +
       panel("Recent agent turns", table(["Timestamp", "State", "Source", "Recorded cost"], turnRows)) +
@@ -138,7 +138,7 @@ export function renderDashboardOverview(): string {
       panel("Recent tool activity", table(["Timestamp", "Tool", "Duration", "Result"], toolRows)) +
       panel("Financial records", '<p class="notice">The runtime schema records compute and transaction activity, but no dedicated verified customer-sales ledger was found. Revenue remains $0.00 here until actual sales receipts are integrated.</p>' + table(["Timestamp", "Type", "Amount", "Description"], txnRows)) +
       panel("Goals, tasks, products & experiments", taskSummary) +
-      '<p class="footnote">Read-only view. No secrets, wallet keys, raw prompts, or private reasoning are displayed. Recorded inference cost is not a complete accounting of hosting or external spend.</p>';
+      '<p class="footnote">Read-only view. No secrets, wallet keys, raw prompts, or private reasoning are displayed. Recorded inference cost is not a complete accounting of hosting or external spend. A state database being available does not prove the agent process is running.</p><a class="button" href="/logout">Sign out</a>';
   } catch {
     return '<div class="overview-head"><div><p class="eyebrow">PRIVATE CONTROL PLANE</p><h1>' + esc(name) + '</h1><p class="subhead">Operational overview</p></div><span class="pill warn">Database error</span></div>' +
       panel("Runtime state unavailable", '<p>The state database exists but could not be opened safely in read-only mode. No metrics are fabricated. Verify database permissions, mount path, and schema version.</p>') +
