@@ -35,3 +35,31 @@ This runbook prepares a fresh Automaton runtime without starting autonomous acti
 ## Rollback
 
 If the worker crashes or configuration is uncertain, stop the worker service and preserve the volume. Do not delete or recreate the volume or wallet to troubleshoot. Inspect logs with secrets redacted.
+
+## Gemini inference (free-tier eligible, subject to Google limits)
+
+The runtime can use Gemini through Google's OpenAI-compatible endpoint. Set these in the worker service's protected environment variables; do not commit secrets or paste them into chat:
+
+- `GEMINI_API_KEY`: API key from Google AI Studio.
+- `ATLAS_INFERENCE_MODEL`: a Gemini model ID supported by your Google AI Studio account, for example `gemini-2.5-flash`.
+
+The model override applies at startup and does not rewrite `automaton.json`. Gemini inference support does **not** replace Conway authentication: the current runtime still requires a Conway API key for identity, client setup, and other runtime operations. Without that key, this worker cannot run the complete Automaton agent loop yet. Gemini free-tier limits and model availability depend on Google's current terms and region.
+
+For a fresh worker, build the root runtime with `pnpm install --frozen-lockfile && pnpm build` and start it with `node dist/index.js --run` only after a valid `~/.automaton` configuration and wallet are available. Persist the full `~/.automaton` directory if you attach durable storage. Do not enable `ATLAS_ALLOW_BOOTSTRAP_TOPUP` unless you explicitly intend to authorize a real payment.
+
+## Standalone Atlas mode (no Conway account)
+
+The Conway API's SIWE provisioning endpoint has been reported broken server-side by multiple Automaton users, including an open report from September 2026. This is not something a local retry or a different wallet can reliably fix. Atlas now has an opt-in standalone mode that skips Conway API-key provisioning and Conway identity registration, runs local tools, and uses a direct inference provider.
+
+Set these worker environment variables:
+
+- `ATLAS_STANDALONE_MODE=true`
+- `GEMINI_API_KEY`: store the secret only in Railway's protected variables.
+- `ATLAS_INFERENCE_MODEL=gemini-2.5-flash`
+- `ATLAS_NAME=Atlas`
+- `ATLAS_GENESIS_PROMPT`: the agent's initial task/purpose.
+- `ATLAS_CREATOR_ADDRESS`: your public EVM wallet address (0x + 40 hex characters). Never put a private key or seed phrase here.
+
+Standalone mode can create `~/.automaton/automaton.json` and a wallet on first startup. Persist the entire `~/.automaton` directory so the wallet and SQLite state survive redeploys. It does not provision Conway, use Conway remote sandboxes, or top up Conway credits. Features requiring Conway's control plane (remote sandboxes, Conway credits, platform registration) remain unavailable. Gemini usage is subject to Google's quotas and billing; cost tracking uses a conservative paid-rate estimate and does not assume the free tier will always apply.
+
+Do not set `ATLAS_ALLOW_BOOTSTRAP_TOPUP=true`; it is unrelated to standalone mode and may authorize a real payment.

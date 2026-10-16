@@ -109,9 +109,16 @@ export async function runAgentLoop(
   };
 
   // Initialize inference router (Phase 2.3)
+  const standaloneMode = process.env.ATLAS_STANDALONE_MODE === "true";
+  const standaloneModel = standaloneMode
+    ? (process.env.ATLAS_INFERENCE_MODEL || "gemini-2.5-flash")
+    : undefined;
   const modelStrategyConfig: ModelStrategyConfig = {
     ...DEFAULT_MODEL_STRATEGY_CONFIG,
     ...(config.modelStrategy ?? {}),
+    inferenceModel: standaloneModel || process.env.ATLAS_INFERENCE_MODEL || config.modelStrategy?.inferenceModel || config.inferenceModel,
+    lowComputeModel: standaloneModel || config.modelStrategy?.lowComputeModel || DEFAULT_MODEL_STRATEGY_CONFIG.lowComputeModel,
+    criticalModel: standaloneModel || config.modelStrategy?.criticalModel || DEFAULT_MODEL_STRATEGY_CONFIG.criticalModel,
   };
   const modelRegistry = new ModelRegistry(db.raw);
   modelRegistry.initialize();
@@ -221,6 +228,19 @@ export async function runAgentLoop(
         config: {
           ...config,
           spawnAgent: async (task: any) => {
+            // Standalone mode must never attempt Conway sandbox operations.
+            if (standaloneMode) {
+              try {
+                return initializedWorkerPool.spawn(task);
+              } catch (localError) {
+                logger.warn("Failed to spawn standalone local worker", {
+                  taskId: task.id,
+                  error: localError instanceof Error ? localError.message : String(localError),
+                });
+                return null;
+              }
+            }
+
             // Try Conway sandbox spawn first (production)
             try {
               const { generateGenesisConfig } = await import("../replication/genesis.js");
@@ -441,7 +461,7 @@ export async function runAgentLoop(
         // available, buy credits NOW — before attempting inference.
         // This prevents the agent from dying mid-loop while waiting for
         // the heartbeat to fire. Uses a 60s cooldown to avoid hammering.
-        if ((tier === "critical" || tier === "low_compute") && financial.usdcBalance >= 5) {
+        if (!standaloneMode && (tier === "critical" || tier === "low_compute") && financial.usdcBalance >= 5) {
           const INLINE_TOPUP_COOLDOWN_MS = 60_000;
           const lastInlineTopup = db.getKV("last_inline_topup_attempt");
           const cooldownExpired = !lastInlineTopup ||
