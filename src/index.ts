@@ -11,7 +11,7 @@ import fs from "fs";
 import path from "path";
 import { getWallet, getAutomatonDir } from "./identity/wallet.js";
 import { provision, loadApiKeyFromConfig } from "./identity/provision.js";
-import { loadConfig, resolvePath } from "./config.js";
+import { loadConfig, resolvePath, createConfig, saveConfig } from "./config.js";
 import { createDatabase } from "./state/database.js";
 import { createConwayClient } from "./conway/client.js";
 import { createInferenceClient } from "./conway/inference.js";
@@ -30,7 +30,7 @@ import { PolicyEngine } from "./agent/policy-engine.js";
 import { SpendTracker } from "./agent/spend-tracker.js";
 import { createDefaultRules } from "./agent/policy-rules/index.js";
 import type { AutomatonIdentity, AgentState, Skill, SocialClientInterface } from "./types.js";
-import { DEFAULT_TREASURY_POLICY } from "./types.js";
+import { DEFAULT_TREASURY_POLICY, DEFAULT_MODEL_STRATEGY_CONFIG } from "./types.js";
 import { createLogger, setGlobalLogLevel, StructuredLogger } from "./observability/logger.js";
 import { prettySink } from "./observability/pretty-sink.js";
 import { bootstrapTopup } from "./conway/topup.js";
@@ -192,9 +192,42 @@ Version:    ${config.version}
 async function run(): Promise<void> {
   logger.info(`[${new Date().toISOString()}] Conway Automaton v${VERSION} starting...`);
 
-  // Load config. A first-run wizard requires a real interactive terminal.
-  // Never leave a Railway/background worker hanging while waiting for stdin.
+  // Standalone mode deliberately avoids Conway account provisioning and paid Conway services.
+  // It requires a direct inference provider (e.g. GEMINI_API_KEY) and explicit bootstrap metadata.
+  const standaloneMode = process.env.ATLAS_STANDALONE_MODE === "true";
+
+  // Load config. In standalone mode, support safe non-interactive bootstrap from environment.
   let config = loadConfig();
+  if (!config && standaloneMode) {
+    const name = process.env.ATLAS_NAME?.trim();
+    const genesisPrompt = process.env.ATLAS_GENESIS_PROMPT?.trim();
+    const creatorAddress = process.env.ATLAS_CREATOR_ADDRESS?.trim();
+    if (!name || !genesisPrompt || !creatorAddress || !/^0x[a-fA-F0-9]{40}$/.test(creatorAddress)) {
+      logger.error(
+        "Standalone bootstrap requires ATLAS_NAME, ATLAS_GENESIS_PROMPT, and a valid " +
+        "ATLAS_CREATOR_ADDRESS (0x + 40 hex characters). No Conway account is needed.",
+      );
+      process.exit(1);
+    }
+    const { chainIdentity } = await getWallet();
+    config = createConfig({
+      name,
+      genesisPrompt,
+      creatorAddress,
+      registeredWithConway: false,
+      sandboxId: "",
+      walletAddress: chainIdentity.address,
+      apiKey: "",
+    });
+    config.modelStrategy = {
+      ...DEFAULT_MODEL_STRATEGY_CONFIG,
+      inferenceModel: process.env.ATLAS_INFERENCE_MODEL || "gemini-2.5-flash",
+      lowComputeModel: process.env.ATLAS_INFERENCE_MODEL || "gemini-2.5-flash",
+      criticalModel: process.env.ATLAS_INFERENCE_MODEL || "gemini-2.5-flash",
+    };
+    saveConfig(config);
+    logger.info("Standalone Atlas configuration created. Conway provisioning is disabled.");
+  }
   if (!config) {
     if (!process.stdin.isTTY) {
       logger.error(
@@ -208,13 +241,19 @@ async function run(): Promise<void> {
     config = await runSetupWizard();
   }
 
+  // In standalone mode, force all sandbox operations to local execution.
+  if (standaloneMode) config.sandboxId = "";
+
   // Load wallet (chain-aware)
   const { account, chainIdentity, chainType: walletChainType } = await getWallet();
   const resolvedChainType = config.chainType || walletChainType || "evm";
-  const apiKey = config.conwayApiKey || loadApiKeyFromConfig();
-  if (!apiKey) {
-    logger.error("No API key found. Run: automaton --provision");
+  const apiKey = config.conwayApiKey || loadApiKeyFromConfig() || process.env.CONWAY_API_KEY || "";
+  if (!apiKey && !standaloneMode) {
+    logger.error("No Conway API key found. Conway provisioning is currently unavailable; use ATLAS_STANDALONE_MODE=true with a direct inference key to run without Conway.");
     process.exit(1);
+  }
+  if (standaloneMode) {
+    logger.warn("ATLAS_STANDALONE_MODE is enabled: Conway identity registration, remote sandboxes, and Conway billing are disabled.");
   }
 
   // Initialize database
@@ -234,7 +273,7 @@ async function run(): Promise<void> {
     address: chainIdentity.address,
     account,
     creatorAddress: config.creatorAddress,
-    sandboxId: config.sandboxId,
+    sandboxId: standaloneMode ? "" : config.sandboxId,
     apiKey,
     createdAt,
     chainType: resolvedChainType,
@@ -257,12 +296,12 @@ async function run(): Promise<void> {
   const conway = createConwayClient({
     apiUrl: config.conwayApiUrl,
     apiKey,
-    sandboxId: config.sandboxId,
+    sandboxId: standaloneMode ? "" : config.sandboxId,
   });
 
   // Register automaton identity (one-time, immutable)
   const registrationState = db.getIdentity("conwayRegistrationStatus");
-  if (registrationState !== "registered") {
+  if (!standaloneMode && registrationState !== "registered") {
     try {
       const genesisPromptHash = config.genesisPrompt
         ? keccak256(toHex(config.genesisPrompt))
