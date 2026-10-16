@@ -247,7 +247,7 @@ async function run(): Promise<void> {
   // Load wallet (chain-aware)
   const { account, chainIdentity, chainType: walletChainType } = await getWallet();
   const resolvedChainType = config.chainType || walletChainType || "evm";
-  const apiKey = config.conwayApiKey || loadApiKeyFromConfig() || process.env.CONWAY_API_KEY || "";
+  const apiKey = standaloneMode ? "" : (config.conwayApiKey || loadApiKeyFromConfig() || process.env.CONWAY_API_KEY || "");
   if (!apiKey && !standaloneMode) {
     logger.error("No Conway API key found. Conway provisioning is currently unavailable; use ATLAS_STANDALONE_MODE=true with a direct inference key to run without Conway.");
     process.exit(1);
@@ -393,7 +393,7 @@ async function run(): Promise<void> {
 
   // Atlas safety: startup must not spend funds unless the owner explicitly opts in.
   // This payment can transfer real USDC, so it is disabled by default.
-  if (process.env.ATLAS_ALLOW_BOOTSTRAP_TOPUP === "true") {
+  if (!standaloneMode && process.env.ATLAS_ALLOW_BOOTSTRAP_TOPUP === "true") {
     try {
       let bootstrapTimer: ReturnType<typeof setTimeout>;
       const bootstrapTimeout = new Promise<null>((_, reject) => {
