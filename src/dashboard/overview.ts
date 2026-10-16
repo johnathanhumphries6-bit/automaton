@@ -75,7 +75,7 @@ export function renderDashboardOverview(): string {
     const message = !configured
       ? "This dashboard is healthy, but the Atlas runtime has not been configured in this service. The agent is not running here. Configure the runtime and persist its .automaton state on a Railway volume before enabling autonomous work."
       : "Runtime configuration exists, but the SQLite state database was not found at the configured path. Mount the persistent runtime volume at the same path and redeploy. The dashboard will not invent activity, costs, products, or revenue.";
-    return '<div class="overview-head"><div><p class="eyebrow">PRIVATE CONTROL PLANE</p><h1>' + esc(name) + '</h1><p class="subhead">Live operational overview · auto-refreshes every 30 seconds</p></div><span class="pill warn">Runtime disconnected</span></div>' +
+    return '<div class="overview-head"><div><p class="eyebrow">PRIVATE CONTROL PLANE</p><h1>' + esc(name) + '</h1><p class="subhead">Live operational overview · refresh this page for latest data</p></div><span class="pill warn">Runtime disconnected</span></div>' +
       '<div class="metrics">' + cards.join("") + '</div>' +
       panel("Action required", '<p>' + esc(message) + '</p><ul class="checklist"><li>Attach durable storage for the runtime state.</li><li>Provide runtime configuration and authorized inference credentials through Railway variables or mounted secrets; never put secrets in source code.</li><li>Keep spending and external actions disabled until their limits and approval gates are configured.</li><li>Run a private test, then verify real activity and cost records appear here.</li></ul>') +
       panel("Connection diagnostics", table(["Check", "Result"], [
@@ -130,7 +130,7 @@ export function renderDashboardOverview(): string {
       ? (db.prepare("SELECT created_at,name,duration_ms,error FROM tool_calls ORDER BY created_at DESC LIMIT 10").all() as Row[]).map((r) => [fmtDate(r.created_at), String(r.name), String(r.duration_ms || 0) + " ms", r.error ? String(r.error).slice(0, 120) : "OK"])
       : [];
 
-    return '<div class="overview-head"><div><p class="eyebrow">PRIVATE CONTROL PLANE</p><h1>' + esc(name) + '</h1><p class="subhead">Live operational overview · auto-refreshes every 30 seconds</p></div><span class="pill good">State connected</span></div>' +
+    return '<div class="overview-head"><div><p class="eyebrow">PRIVATE CONTROL PLANE</p><h1>' + esc(name) + '</h1><p class="subhead">Live operational overview · refresh this page for latest data</p></div><span class="pill good">State connected</span></div>' +
       '<div class="metrics">' + cards.join("") + '</div>' +
       panel("Runtime identity", table(["Field", "Value"], identityRows)) +
       panel("Recent agent turns", table(["Timestamp", "State", "Source", "Recorded cost"], turnRows)) +
