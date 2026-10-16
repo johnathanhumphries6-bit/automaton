@@ -186,9 +186,18 @@ Version:    ${config.version}
 async function run(): Promise<void> {
   logger.info(`[${new Date().toISOString()}] Conway Automaton v${VERSION} starting...`);
 
-  // Load config — first run triggers interactive setup wizard
+  // Load config. A first-run wizard requires a real interactive terminal.
+  // Never leave a Railway/background worker hanging while waiting for stdin.
   let config = loadConfig();
   if (!config) {
+    if (!process.stdin.isTTY) {
+      logger.error(
+        "Automaton is not configured and no interactive terminal is available. " +
+        "Run setup in an interactive environment first, then persist the complete " +
+        "~/.automaton directory on the Railway volume before starting the worker.",
+      );
+      process.exit(1);
+    }
     const { runSetupWizard } = await import("./setup/wizard.js");
     config = await runSetupWizard();
   }
