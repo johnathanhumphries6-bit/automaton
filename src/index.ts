@@ -302,7 +302,7 @@ async function run(): Promise<void> {
   const inference = createInferenceClient({
     apiUrl: config.conwayApiUrl,
     apiKey,
-    defaultModel: config.inferenceModel,
+    defaultModel: process.env.ATLAS_INFERENCE_MODEL || config.inferenceModel,
     maxTokens: config.maxTokensPerTurn,
     lowComputeModel: config.modelStrategy?.lowComputeModel || "gpt-5-mini",
     openaiApiKey: config.openaiApiKey,
