@@ -49,6 +49,22 @@ export const TASK_TIMEOUTS: Record<string, number> = {
 
 export const STATIC_MODEL_BASELINE: Omit<ModelEntry, "lastSeen" | "createdAt" | "updatedAt">[] = [
   {
+    modelId: "gemini-2.5-flash",
+    provider: "gemini",
+    displayName: "Gemini 2.5 Flash",
+    tierMinimum: "dead",
+    // Conservative paid-rate estimate: $0.30/M input and $2.50/M output.
+    // Actual billing may be lower or zero if the account qualifies for Google's free tier.
+    costPer1kInput: 3,
+    costPer1kOutput: 25,
+    maxTokens: 8192,
+    contextWindow: 1048576,
+    supportsTools: true,
+    supportsVision: true,
+    parameterStyle: "max_tokens",
+    enabled: true,
+  },
+  {
     modelId: "gpt-5.2",
     provider: "openai",
     displayName: "GPT-5.2",
